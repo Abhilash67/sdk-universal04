@@ -2,11 +2,14 @@
   "name": "universal-sdk",
   "version": "1.0.0",
   "description": "A universal authentication SDK with provider-agnostic interface",
-  "main": "dist/universal-sdk.js",
+  "main": "dist/universal-sdk.umd.js",
+  "module": "dist/universal-sdk.esm.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "start": "webpack serve --mode development --open",
-    "build": "webpack --mode production",
-    "dev": "webpack --mode development",
+    "build:umd": "webpack --config webpack.umd.config.js --mode production",
+    "build:esm": "webpack --config webpack.esm.config.js --mode production",
+    "build": "npm run build:umd && npm run build:esm",
+    "start": "webpack serve --config webpack.umd.config.js --mode development --open",
     "test": "jest",
     "prepublishOnly": "npm run build"
   },
