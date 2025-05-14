@@ -1,59 +1,101 @@
-import { Component, Inject } from '@angular/core';
-import { faUser, faPowerOff } from '@fortawesome/free-solid-svg-icons';
-import { AuthService } from '@auth0/auth0-angular';
-import { AsyncPipe, DOCUMENT, NgIf } from '@angular/common';
-import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import {
-  NgbCollapse,
-  NgbDropdown,
-  NgbDropdownMenu,
-  NgbDropdownToggle,
-} from '@ng-bootstrap/ng-bootstrap';
-import { RouterLink } from '@angular/router';
-import  UniversalAuth  from 'universal-sdk';
+<div style="padding: 20px">
+  <h1>Authentication Demo</h1>
+
+  <div *ngIf="isLoading">
+    <p>Loading...</p>
+  </div>
+
+  <div *ngIf="!isLoading">
+    <div *ngIf="!isAuthenticated">
+      <p>You are not logged in</p>
+      <button (click)="loginButton()">Login</button>
+    </div>
+
+    <div *ngIf="isAuthenticated">
+      <p>Welcome! You are logged in</p>
+      <button (click)="logout()">Logout</button>
+
+      <div *ngIf="userProfile" style="margin-top: 20px">
+        <h3>User Profile:</h3>
+        <pre>{{ userProfile | json }}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+import { Component, OnInit } from '@angular/core';
+import { CommonModule, JsonPipe } from '@angular/common';
+import UniversalAuth from 'universal-sdk';
 
 @Component({
-  selector: 'app-nav-bar',
-  templateUrl: './nav-bar.component.html',
-  styleUrls: ['./nav-bar.component.css'],
+  selector: 'app-root',
   standalone: true,
-  imports: [
-    FontAwesomeModule,
-    NgbDropdownToggle,
-    NgbDropdownMenu,
-    NgbDropdown,
-    NgbCollapse,
-    AsyncPipe,
-    NgIf,
-    RouterLink,
-  ],
+  imports: [CommonModule, JsonPipe],
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.css'
 })
-export class NavBarComponent {
-  isCollapsed = true;
-  faUser = faUser;
-  faPowerOff = faPowerOff;
-
-   auth0Config = {
+export class AppComponent implements OnInit {
+  authClient: any = null;
+  isAuthenticated: boolean = false;
+  isLoading: boolean = true;
+  userProfile: any = null;
+  
+  auth0Config = {
     domain: 'dev-vfzstbs1dxkuagab.us.auth0.com',
-    clientId: '7jEmLTXy7WvF5gAs1OE9QXIZhQnKfs5R',
+    clientId: 'CP6smmR7f8NVud69LolHjy8YWSPUZ7g0',
     audience: 'https://dev-vfzstbs1dxkuagab.us.auth0.com/api/v2/', 
     redirectUri: window.location.origin,
   };
-  constructor(
-    public auth: AuthService,
-    @Inject(DOCUMENT) private doc: Document
-  ) {}
-
-  async loginWithRedirect() {
-    const authClient = await UniversalAuth.createAuthProvider(
-      'auth0',
-      this.auth0Config
-    );
-    console.log("authclient",authClient);
-    authClient.login();
+  
+  async ngOnInit() {
+    await this.initializeAuth();
   }
-
+  
+  async initializeAuth() {
+    try {
+      // Create auth client
+      this.authClient = await UniversalAuth.createAuthProvider(
+        'auth0',
+        this.auth0Config
+      );
+      
+      // Check authentication status
+      this.isAuthenticated = this.authClient.isAuthenticated();
+      
+      // If authenticated, get user profile
+      if (this.isAuthenticated) {
+        try {
+          this.userProfile = await this.authClient.getUserProfile();
+          console.log('User is logged in:', this.userProfile);
+        } catch (error) {
+          console.error('Error getting user profile:', error);
+        }
+      } else {
+        console.log('User is not logged in');
+      }
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+    } finally {
+      this.isLoading = false;
+    }
+  }
+  
+  async loginButton() {
+    if (!this.authClient) {
+      await this.initializeAuth();
+    }
+    
+    if (this.authClient) {
+      this.authClient.login();
+    }
+  }
+  
   logout() {
-    this.auth.logout({ logoutParams: { returnTo: this.doc.location.origin } });
+    if (this.authClient) {
+      this.authClient.logout();
+      this.isAuthenticated = false;
+      this.userProfile = null;
+    }
   }
 }
