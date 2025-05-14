@@ -49,6 +49,8 @@ export default class Auth0Provider extends AuthProvider {
     }
 
     if (!this.authenticated && window.location.search.includes("code=")) {
+      const isAuthenticated = this.authenticated;
+      console.log("User is authenticated:", isAuthenticated);
       this._handleAuthCallback();
     }
   }
@@ -66,13 +68,12 @@ export default class Auth0Provider extends AuthProvider {
     console.log("[Auth0Provider] login called");
     try {
       const authUrl =
-        `https://www.google.com/` +
+        `https://${this.config.domain}/authorize?` +
         `client_id=${this.config.clientId}&` +
         `redirect_uri=${encodeURIComponent(this.config.redirectUri)}&` +
         `response_type=${this.config.responseType}&` +
         `scope=${encodeURIComponent(this.config.scope)}&` +
         `audience=${encodeURIComponent(this.config.audience)}`;
-
       window.location.assign(authUrl);
     } catch (error) {
       console.error("Login failed:", error);
