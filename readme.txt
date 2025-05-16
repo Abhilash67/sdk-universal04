@@ -1,611 +1,201 @@
-# Universal Auth SDK
+Universal Auth SDK
+A lightweight, provider-agnostic authentication SDK for web applications that works with Auth0 and Okta.
 
-A universal authentication SDK that provides a consistent interface for different authentication providers (Auth0, Okta, etc.).
+Show Image
+Show Image
 
-## Table of Contents
+Features
+🔄 Single interface for multiple auth providers (Auth0, Okta)
+🛡️ Built-in token refresh and management
+📱 Framework-agnostic (works with React, Angular, Vue, and vanilla JS)
+🔑 Secure storage and handling of authentication tokens
+📝 Complete TypeScript definitions
+Installation
+bash
+npm install universal-sdk
+or
 
-- [Installation](#installation)
-- [Usage](#usage)
-  - [Vanilla JavaScript](#vanilla-javascript)
-  - [React Integration](#react-integration)
-  - [Angular Integration](#angular-integration)
-- [Authentication Providers](#authentication-providers)
-  - [Auth0](#auth0)
-- [API Reference](#api-reference)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
+bash
+yarn add universal-sdk
+Quick Start
+javascript
+import UniversalAuth from 'universal-sdk';
 
-## Installation
-
-Install the package using npm:
-
-```bash
-npm install universal-auth
-```
-
-Or using yarn:
-
-```bash
-yarn add universal-auth
-```
-
-## Usage
-
-### Vanilla JavaScript
-
-#### Using ES Modules
-
-```javascript
-import UniversalAuth from 'universal-auth';
-
-// Configure Auth0
-const auth0Config = {
+// Configure your authentication provider
+const config = {
   domain: 'your-domain.auth0.com',
   clientId: 'your-client-id',
-  audience: 'your-audience-uri', // Required for Auth0
+  audience: 'https://api.example.com',
   redirectUri: window.location.origin
 };
 
-// Initialize Auth0 provider
-async function initializeAuth() {
-  try {
-    const authClient = await UniversalAuth.createAuthProvider('auth0', auth0Config);
-    
-    // Check if user is already authenticated
-    if (authClient.isAuthenticated()) {
-      const profile = await authClient.getUserProfile();
-      console.log('User profile:', profile);
+// Create an auth provider instance
+UniversalAuth.createAuthProvider('auth0', config)
+  .then(authProvider => {
+    // Check if the user is authenticated
+    if (authProvider.isAuthenticated()) {
+      // User is logged in, get their profile
+      authProvider.getUserProfile()
+        .then(profile => console.log('User profile:', profile));
     } else {
-      // Set up login button
-      document.getElementById('login-button').addEventListener('click', () => {
-        authClient.login();
+      // User is not logged in, show login button
+      document.getElementById('loginButton').addEventListener('click', () => {
+        authProvider.login();
       });
     }
     
-    // Set up logout button
-    document.getElementById('logout-button').addEventListener('click', () => {
-      authClient.logout();
+    // Add logout functionality
+    document.getElementById('logoutButton').addEventListener('click', () => {
+      authProvider.logout();
     });
-  } catch (error) {
-    console.error('Authentication error:', error);
-  }
-}
-
-// Call the initialization function when the page loads
-document.addEventListener('DOMContentLoaded', initializeAuth);
-```
-
-#### Using Script Tag (UMD)
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Auth Example</title>
-  <script src="node_modules/universal-auth/dist/universal-auth.js"></script>
-</head>
-<body>
-  <button id="login-button">Login</button>
-  <button id="logout-button" style="display:none">Logout</button>
-  <div id="profile" style="display:none"></div>
-  
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Configure Auth0
-      const auth0Config = {
-        domain: 'your-domain.auth0.com',
-        clientId: 'your-client-id',
-        audience: 'your-audience-uri', // Required for Auth0
-        redirectUri: window.location.origin
-      };
-      
-      try {
-        // Initialize Auth0 provider
-        const authClient = await UniversalAuth.createAuthProvider('auth0', auth0Config);
-        
-        // Handle login/logout
-        document.getElementById('login-button').addEventListener('click', () => {
-          authClient.login();
-        });
-        
-        document.getElementById('logout-button').addEventListener('click', () => {
-          authClient.logout();
-        });
-        
-        // Check authentication status
-        updateUI();
-        
-        function updateUI() {
-          const isAuthenticated = authClient.isAuthenticated();
-          document.getElementById('login-button').style.display = isAuthenticated ? 'none' : 'block';
-          document.getElementById('logout-button').style.display = isAuthenticated ? 'block' : 'none';
-          document.getElementById('profile').style.display = isAuthenticated ? 'block' : 'none';
-          
-          if (isAuthenticated) {
-            authClient.getUserProfile().then(profile => {
-              document.getElementById('profile').textContent = JSON.stringify(profile, null, 2);
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Authentication error:', error);
-      }
-    });
-  </script>
-</body>
-</html>
-```
-
-### React Integration
-
-#### Setting up Authentication Context
-
-```jsx
-// src/auth/AuthContext.js
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import UniversalAuth from 'universal-auth';
-
-// Create the authentication context
-const AuthContext = createContext();
-
-// Auth provider component
-export function AuthProvider({ children }) {
-  const [authClient, setAuthClient] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  
-  // Initialize authentication
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        // Configure Auth0
-        const auth0Config = {
-          domain: process.env.REACT_APP_AUTH0_DOMAIN,
-          clientId: process.env.REACT_APP_AUTH0_CLIENT_ID,
-          audience: process.env.REACT_APP_AUTH0_AUDIENCE,
-          redirectUri: window.location.origin
-        };
-        
-        // Create Auth0 provider
-        const client = await UniversalAuth.createAuthProvider('auth0', auth0Config);
-        setAuthClient(client);
-        
-        // Check authentication status
-        const authenticated = client.isAuthenticated();
-        setIsAuthenticated(authenticated);
-        
-        if (authenticated) {
-          const profile = await client.getUserProfile();
-          setUser(profile);
-        }
-      } catch (error) {
-        console.error('Authentication initialization error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    initAuth();
-  }, []);
-  
-  // Login function
-  const login = () => {
-    if (authClient) {
-      authClient.login();
-    }
-  };
-  
-  // Logout function
-  const logout = () => {
-    if (authClient) {
-      authClient.logout();
-    }
-  };
-  
-  // Context value
-  const value = {
-    isAuthenticated,
-    user,
-    loading,
-    login,
-    logout,
-    authClient
-  };
-  
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-// Custom hook to use the auth context
-export function useAuth() {
-  return useContext(AuthContext);
-}
-```
-
-#### Using the Auth Context in Components
-
-```jsx
-// src/App.js
-import React from 'react';
-import { AuthProvider } from './auth/AuthContext';
-import LoginButton from './components/LoginButton';
-import Profile from './components/Profile';
+  });
+Framework Integration Examples
+React
+jsx
+// Import the SDK and React hooks
+import React, { useState, useEffect } from 'react';
+import UniversalAuth from 'universal-sdk';
 
 function App() {
-  return (
-    <AuthProvider>
-      <div className="App">
-        <header>
-          <h1>React Auth Example</h1>
-        </header>
-        <main>
-          <LoginButton />
-          <Profile />
-        </main>
-      </div>
-    </AuthProvider>
-  );
-}
+  const [authProvider, setAuthProvider] = useState(null);
+  const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-export default App;
-```
+  useEffect(() => {
+    // Initialize the auth provider
+    const config = {
+      domain: 'your-domain.auth0.com',
+      clientId: 'your-client-id',
+      audience: 'https://api.example.com',
+      redirectUri: window.location.origin
+    };
 
-```jsx
-// src/components/LoginButton.js
-import React from 'react';
-import { useAuth } from '../auth/AuthContext';
+    UniversalAuth.createAuthProvider('auth0', config)
+      .then(provider => {
+        setAuthProvider(provider);
+        provider.isAuthenticated().then(authenticated => {
+          setIsAuthenticated(authenticated);
+          if (authenticated) {
+            provider.getUserProfile().then(profile => setUser(profile));
+          }
+          setIsLoading(false);
+        });
+      });
+  }, []);
 
-function LoginButton() {
-  const { isAuthenticated, loading, login, logout } = useAuth();
-  
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-  
-  return (
-    <button onClick={isAuthenticated ? logout : login}>
-      {isAuthenticated ? 'Logout' : 'Login'}
-    </button>
-  );
-}
+  const login = () => authProvider?.login();
+  const logout = () => {
+    authProvider?.logout();
+    setUser(null);
+    setIsAuthenticated(false);
+  };
 
-export default LoginButton;
-```
+  if (isLoading) return <div>Loading...</div>;
 
-```jsx
-// src/components/Profile.js
-import React from 'react';
-import { useAuth } from '../auth/AuthContext';
-
-function Profile() {
-  const { isAuthenticated, loading, user } = useAuth();
-  
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-  
-  if (!isAuthenticated || !user) {
-    return <div>Please log in to see your profile</div>;
-  }
-  
   return (
     <div>
-      <h2>User Profile</h2>
-      <p>Name: {user.name}</p>
-      <p>Email: {user.email}</p>
-      <pre>{JSON.stringify(user, null, 2)}</pre>
+      {isAuthenticated ? (
+        <div>
+          <h1>Welcome, {user?.name}</h1>
+          <button onClick={logout}>Log Out</button>
+        </div>
+      ) : (
+        <div>
+          <h1>Please log in</h1>
+          <button onClick={login}>Log In</button>
+        </div>
+      )}
     </div>
   );
 }
-
-export default Profile;
-```
-
-### Angular Integration
-
-#### Creating an Auth Service
-
-```typescript
-// src/app/services/auth.service.ts
+Angular
+typescript
+// auth.service.ts
 import { Injectable } from '@angular/core';
+import UniversalAuth from 'universal-sdk';
 import { BehaviorSubject } from 'rxjs';
-import UniversalAuth from 'universal-auth';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private authClient: any = null;
+  private authProvider: any;
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
-  private userSubject = new BehaviorSubject<any>(null);
-  private loadingSubject = new BehaviorSubject<boolean>(true);
+  private userProfileSubject = new BehaviorSubject<any>(null);
   
-  isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
-  user$ = this.userSubject.asObservable();
-  loading$ = this.loadingSubject.asObservable();
+  public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+  public userProfile$ = this.userProfileSubject.asObservable();
   
   constructor() {
-    this.initializeAuth();
+    this.initAuth();
   }
   
-  private async initializeAuth(): Promise<void> {
-    try {
-      // Configure Auth0
-      const auth0Config = {
-        domain: 'your-domain.auth0.com',
-        clientId: 'your-client-id',
-        audience: 'your-audience-uri', // Required for Auth0
-        redirectUri: window.location.origin
-      };
-      
-      // Create Auth0 provider
-      this.authClient = await UniversalAuth.createAuthProvider('auth0', auth0Config);
-      
-      // Check authentication status
-      const authenticated = this.authClient.isAuthenticated();
-      this.isAuthenticatedSubject.next(authenticated);
-      
-      if (authenticated) {
-        const profile = await this.authClient.getUserProfile();
-        this.userSubject.next(profile);
-      }
-    } catch (error) {
-      console.error('Authentication initialization error:', error);
-    } finally {
-      this.loadingSubject.next(false);
+  private async initAuth() {
+    const config = {
+      domain: 'your-domain.auth0.com',
+      clientId: 'your-client-id',
+      audience: 'https://api.example.com',
+      redirectUri: window.location.origin
+    };
+    
+    this.authProvider = await UniversalAuth.createAuthProvider('auth0', config);
+    const isAuthenticated = await this.authProvider.isAuthenticated();
+    this.isAuthenticatedSubject.next(isAuthenticated);
+    
+    if (isAuthenticated) {
+      const profile = await this.authProvider.getUserProfile();
+      this.userProfileSubject.next(profile);
     }
   }
   
-  login(): void {
-    if (this.authClient) {
-      this.authClient.login();
-    }
+  public login() {
+    this.authProvider?.login();
   }
   
-  logout(): void {
-    if (this.authClient) {
-      this.authClient.logout();
-    }
-  }
-  
-  async refreshUser(): Promise<void> {
-    if (this.authClient && this.authClient.isAuthenticated()) {
-      try {
-        const profile = await this.authClient.getUserProfile();
-        this.userSubject.next(profile);
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-      }
-    }
-  }
-  
-  getAccessToken(): string | null {
-    if (this.authClient && this.authClient.isAuthenticated()) {
-      return this.authClient.getAccessToken();
-    }
-    return null;
+  public logout() {
+    this.authProvider?.logout();
+    this.isAuthenticatedSubject.next(false);
+    this.userProfileSubject.next(null);
   }
 }
-```
+API Reference
+UniversalAuth
+createAuthProvider(type: string, config: object): Promise<AuthProvider>
+Creates an authentication provider of the specified type
+Supported types: 'auth0', 'okta'
+AuthProvider Interface
+All auth providers implement these methods:
 
-#### Creating Auth Components
-
-```typescript
-// src/app/components/login-button/login-button.component.ts
-import { Component, OnInit } from '@angular/core';
-import { AuthService } from '../../services/auth.service';
-import { Observable } from 'rxjs';
-
-@Component({
-  selector: 'app-login-button',
-  template: `
-    <button 
-      *ngIf="!(loading$ | async)" 
-      (click)="handleAuth()"
-      class="btn btn-primary">
-      {{ (isAuthenticated$ | async) ? 'Logout' : 'Login' }}
-    </button>
-    <div *ngIf="loading$ | async">Loading...</div>
-  `
-})
-export class LoginButtonComponent implements OnInit {
-  isAuthenticated$: Observable<boolean>;
-  loading$: Observable<boolean>;
-  
-  constructor(private authService: AuthService) {
-    this.isAuthenticated$ = this.authService.isAuthenticated$;
-    this.loading$ = this.authService.loading$;
-  }
-  
-  ngOnInit(): void {}
-  
-  handleAuth(): void {
-    if (this.authService.isAuthenticated$.value) {
-      this.authService.logout();
-    } else {
-      this.authService.login();
-    }
-  }
+login(): Promise<void> - Initiates the login process
+logout(): void - Logs the user out
+getUserProfile(): Promise<object> - Gets the user profile
+isAuthenticated(): Promise<boolean> - Checks if the user is authenticated
+getAccessToken(): Promise<string> - Gets the access token for API calls
+refreshToken(): Promise<boolean> - Manually refreshes the token
+Configuration Options
+Auth0 Configuration
+javascript
+{
+  domain: 'your-domain.auth0.com',  // Required: Your Auth0 domain
+  clientId: 'your-client-id',       // Required: Your Auth0 client ID
+  audience: 'https://api.example.com', // Required: API identifier
+  redirectUri: window.location.origin, // Optional: Redirect URI after login
+  scope: 'openid profile email offline_access', // Optional: OAuth scopes
+  responseType: 'code',             // Optional: OAuth response type
+  cacheLocation: 'localstorage'     // Optional: Where to store tokens
 }
-```
-
-```typescript
-// src/app/components/user-profile/user-profile.component.ts
-import { Component, OnInit } from '@angular/core';
-import { AuthService } from '../../services/auth.service';
-import { Observable } from 'rxjs';
-
-@Component({
-  selector: 'app-user-profile',
-  template: `
-    <div *ngIf="!(loading$ | async); else loadingTemplate">
-      <div *ngIf="(isAuthenticated$ | async) && (user$ | async); else notAuthenticated">
-        <h2>User Profile</h2>
-        <p>Name: {{ (user$ | async)?.name }}</p>
-        <p>Email: {{ (user$ | async)?.email }}</p>
-        <pre>{{ (user$ | async) | json }}</pre>
-      </div>
-      <ng-template #notAuthenticated>
-        <p>Please log in to see your profile</p>
-      </ng-template>
-    </div>
-    <ng-template #loadingTemplate>
-      <div>Loading...</div>
-    </ng-template>
-  `
-})
-export class UserProfileComponent implements OnInit {
-  isAuthenticated$: Observable<boolean>;
-  user$: Observable<any>;
-  loading$: Observable<boolean>;
-  
-  constructor(private authService: AuthService) {
-    this.isAuthenticated$ = this.authService.isAuthenticated$;
-    this.user$ = this.authService.user$;
-    this.loading$ = this.authService.loading$;
-  }
-  
-  ngOnInit(): void {}
+Okta Configuration
+javascript
+{
+  orgUrl: 'https://your-org.okta.com', // Required: Your Okta organization URL
+  clientId: 'your-client-id',          // Required: Your Okta client ID
+  redirectUri: window.location.origin, // Optional: Redirect URI after login
+  scopes: ['openid', 'profile', 'email'] // Optional: OAuth scopes
 }
-```
-
-#### Using Auth Components in AppModule
-
-```typescript
-// src/app/app.module.ts
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
-import { AppComponent } from './app.component';
-import { LoginButtonComponent } from './components/login-button/login-button.component';
-import { UserProfileComponent } from './components/user-profile/user-profile.component';
-
-@NgModule({
-  declarations: [
-    AppComponent,
-    LoginButtonComponent,
-    UserProfileComponent
-  ],
-  imports: [
-    BrowserModule
-  ],
-  providers: [],
-  bootstrap: [AppComponent]
-})
-export class AppModule { }
-```
-
-## Authentication Providers
-
-### Auth0
-
-#### Configuration
-
-The Auth0 provider requires the following configuration:
-
-| Parameter    | Type     | Description                                          | Required |
-|--------------|----------|------------------------------------------------------|----------|
-| `domain`     | string   | Your Auth0 domain (e.g., `your-domain.auth0.com`)    | Yes      |
-| `clientId`   | string   | Your Auth0 application client ID                      | Yes      |
-| `audience`   | string   | API identifier for the API you want to access         | Yes      |
-| `redirectUri`| string   | URI where Auth0 will redirect after authentication    | No (defaults to `window.location.origin`) |
-| `scope`      | string   | Scopes requested during authentication                | No (defaults to `openid profile email`) |
-
-#### Example Configuration
-
-```javascript
-const auth0Config = {
-  domain: 'your-domain.auth0.com',
-  clientId: 'your-client-id',
-  audience: 'https://your-domain.auth0.com/api/v2/',
-  redirectUri: window.location.origin,
-  scope: 'openid profile email read:data'
-};
-```
-
-## API Reference
-
-### UniversalAuth.createAuthProvider(providerType, config)
-
-Creates and initializes a new authentication provider.
-
-#### Parameters:
-
-- `providerType` (string): The type of authentication provider ('auth0', etc.)
-- `config` (object): Provider-specific configuration
-
-#### Returns:
-
-- Promise that resolves to an authentication provider instance
-
-### AuthProvider Methods
-
-All authentication providers implement the following interface:
-
-#### login()
-
-Redirects the user to the provider's login page.
-
-#### logout()
-
-Logs out the user and clears the authentication state.
-
-#### getUserProfile()
-
-Retrieves the authenticated user's profile.
-
-#### Returns:
-
-- Promise that resolves to the user profile object
-
-#### isAuthenticated()
-
-Checks if the user is currently authenticated.
-
-#### Returns:
-
-- Boolean indicating authentication status
-
-#### getAccessToken()
-
-Gets the access token for the authenticated user.
-
-#### Returns:
-
-- String containing the access token
-
-## Troubleshooting
-
-### Common Issues
-
-#### 1. "Missing required Auth0 configuration parameters"
-
-Make sure you have provided all required parameters in your Auth0 configuration:
-- `domain`
-- `clientId`
-- `audience` (required for Auth0)
-
-#### 2. Redirect Not Working
-
-If clicking the login button doesn't redirect to Auth0:
-- Check that you're using the correct domain and clientId
-- Make sure your Auth0 application has the correct callback URLs configured
-- Check the browser console for any errors
-
-#### 3. Callback URL Issues
-
-If you're getting errors after authentication:
-- Verify that the redirectUri in your config matches the Allowed Callback URLs in your Auth0 dashboard
-- Make sure your application is being served from the same origin as the redirectUri
-
-## Contributing
-
+Contributing
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
-
+License
 This project is licensed under the MIT License - see the LICENSE file for details.
+
