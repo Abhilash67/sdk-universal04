@@ -1,9 +1,9 @@
 {
-  "name": "universal-sdk",
+  "name": "gmf-ciam-sdk",
   "version": "1.0.0",
   "description": "A universal authentication SDK with provider-agnostic interface",
-  "main": "dist/universal-sdk.umd.js",
-  "module": "dist/universal-sdk.esm.js",
+  "main": "dist/GMF-CIAM-sdk.umd.js",
+  "module": "dist/GMF-CIAM-sdk.esm.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build:types": "copyfiles -u 2 src/types/*.d.ts dist/",
@@ -23,13 +23,15 @@
     "profile",
     "angular",
     "react",
-    ".net"
+    ".net",
+    "GMF",
+    "CIAM"
   ],
   "author": "Your Name",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/universal-sdk.git"
+    "url": "https://github.com/yourusername/GMF-CIAM-sdk.git"
   },
   "devDependencies": {
     "@babel/core": "^7.23.7",

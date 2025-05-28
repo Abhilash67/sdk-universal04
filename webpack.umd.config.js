@@ -3,9 +3,9 @@ const path = require("path");
 module.exports = {
   entry: "./src/index.js", // or your entry file
   output: {
-    filename: "universal-sdk.umd.js",
+    filename: "GMF-CIAM-sdk.umd.js",
     path: path.resolve(__dirname, "dist"),
-    library: "UniversalAuth",
+    library: "GMFCIAMAuth", // Changed from UniversalAuth to avoid conflicts
     libraryTarget: "umd",
     globalObject: "this",
     umdNamedDefine: true,

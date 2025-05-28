@@ -3,7 +3,7 @@ const path = require("path");
 module.exports = {
   entry: "./src/index.js", // or your entry file
   output: {
-    filename: "universal-sdk.esm.js",
+    filename: "GMF-CIAM-sdk.esm.js",
     path: path.resolve(__dirname, "dist"),
     library: {
       type: "module",
