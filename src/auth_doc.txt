@@ -1,0 +1,1213 @@
+# GMF CIAM SDK Documentation
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Installation](#installation)
+3. [Quick Start](#quick-start)
+4. [Configuration](#configuration)
+5. [API Reference](#api-reference)
+6. [Error Handling](#error-handling)
+7. [Angular Integration](#angular-integration)
+8. [Authentication Flow](#authentication-flow)
+9. [Security Considerations](#security-considerations)
+10. [Troubleshooting](#troubleshooting)
+11. [Migration Guide](#migration-guide)
+12. [Examples](#examples)
+
+---
+
+## Overview
+
+The GMF CIAM SDK is a universal authentication library that provides a consistent interface for integrating authentication providers like Auth0 into web applications. Built with TypeScript and designed for modern JavaScript frameworks, it offers comprehensive error handling, session management, and user profile operations.
+
+### Key Features
+
+- **Universal Interface**: Single API for multiple authentication providers
+- **Framework Agnostic**: Works with Angular, React, Vue, and vanilla JavaScript
+- **TypeScript Support**: Full type definitions included
+- **Error Handling**: Comprehensive error capturing and recovery
+- **Session Management**: Secure token storage and automatic refresh
+- **Profile Management**: Complete user profile CRUD operations
+- **Password Management**: Reset and change password functionality
+
+### Supported Providers
+
+- ✅ **Auth0** - Full implementation with Management API support
+
+---
+
+## Installation
+
+### NPM
+
+```bash
+npm install gmf-ciam-sdk
+```
+
+### Yarn
+
+```bash
+yarn add gmf-ciam-sdk
+```
+
+### CDN
+
+```html
+<!-- UMD Bundle -->
+<script src="https://unpkg.com/gmf-ciam-sdk@latest/dist/GMF-CIAM-sdk.umd.js"></script>
+
+<!-- ES Module -->
+<script type="module">
+  import GMFCIAMAuth from 'https://unpkg.com/gmf-ciam-sdk@latest/dist/GMF-CIAM-sdk.esm.js';
+</script>
+```
+
+---
+
+## Quick Start
+
+### Basic Implementation
+
+```javascript
+import GMFCIAMAuth from 'gmf-ciam-sdk';
+
+// Initialize the authentication provider
+const authProvider = await GMFCIAMAuth.createAuthProvider('auth0', {
+  domain: 'your-domain.auth0.com',
+  clientId: 'your-client-id',
+  audience: 'your-api-identifier'
+});
+
+// Login
+await authProvider.login();
+
+// Check authentication status
+const isAuthenticated = await authProvider.isAuthenticated();
+
+// Get user profile
+if (isAuthenticated) {
+  const profile = await authProvider.getUserProfile();
+  console.log('User:', profile);
+}
+
+// Logout
+authProvider.logout();
+```
+
+### With Error Handling
+
+```javascript
+// Login with error handling
+const loginResult = await authProvider.login();
+if (authProvider.hasError()) {
+  const error = authProvider.getLastError();
+  console.error('Login failed:', error.message);
+  authProvider.clearLastError();
+}
+
+// Get profile with error handling
+const profile = await authProvider.getUserProfile();
+if (authProvider.hasError()) {
+  const error = authProvider.getLastError();
+  handleAuthError(error);
+} else {
+  displayUserProfile(profile);
+}
+```
+
+---
+
+## Configuration
+
+### Auth0 Configuration
+
+#### Required Parameters
+
+```javascript
+const config = {
+  domain: 'your-domain.auth0.com',     // Auth0 domain
+  clientId: 'your-client-id',          // Application Client ID
+  audience: 'your-api-identifier'      // API Identifier
+};
+```
+
+#### Optional Parameters
+
+```javascript
+const config = {
+  domain: 'your-domain.auth0.com',
+  clientId: 'your-client-id',
+  audience: 'your-api-identifier',
+  redirectUri: 'https://yourapp.com',                    // Default: window.location.origin
+  scope: 'openid profile email offline_access',         // Default scope
+  responseType: 'code',                                  // OAuth response type
+  cacheLocation: 'sessionstorage',                      // Storage type
+  managementApiAudience: 'https://your-domain.auth0.com/api/v2/', // Management API
+  clientSecret: 'your-client-secret'                    // For server-side operations
+};
+```
+
+### Environment Configuration
+
+```javascript
+// Development
+const devConfig = {
+  domain: 'dev-domain.auth0.com',
+  clientId: 'dev-client-id',
+  audience: 'dev-api-identifier'
+};
+
+// Production
+const prodConfig = {
+  domain: 'prod-domain.auth0.com',
+  clientId: 'prod-client-id',
+  audience: 'prod-api-identifier'
+};
+
+const config = process.env.NODE_ENV === 'production' ? prodConfig : devConfig;
+```
+
+---
+
+## API Reference
+
+### Authentication Methods
+
+#### `login()`
+Initiates the authentication flow by redirecting to the provider's login page.
+
+```javascript
+await authProvider.login();
+```
+
+**Returns**: `Promise<void | AuthError>`
+
+#### `logout()`
+Logs out the user and redirects to the provider's logout page.
+
+```javascript
+authProvider.logout();
+```
+
+**Returns**: `void | AuthError`
+
+#### `isAuthenticated()`
+Checks if the user is currently authenticated.
+
+```javascript
+const isAuth = await authProvider.isAuthenticated();
+```
+
+**Returns**: `Promise<boolean>`
+
+#### `getAccessToken()`
+Retrieves the current access token, automatically refreshing if needed.
+
+```javascript
+const token = await authProvider.getAccessToken();
+```
+
+**Returns**: `Promise<string | AuthError>`
+
+#### `refreshToken()`
+Manually refreshes the access token using the refresh token.
+
+```javascript
+const success = await authProvider.refreshToken();
+```
+
+**Returns**: `Promise<boolean | AuthError>`
+
+### User Profile Methods
+
+#### `getUserProfile(forceRefresh?)`
+Retrieves the user's profile information.
+
+```javascript
+// Get cached profile
+const profile = await authProvider.getUserProfile();
+
+// Force refresh from server
+const freshProfile = await authProvider.getUserProfile(true);
+```
+
+**Parameters**:
+- `forceRefresh` (boolean, optional): Force fetch from server
+
+**Returns**: `Promise<UserProfile | AuthError>`
+
+#### `getDetailedUserProfile()`
+Retrieves detailed user profile using the Management API.
+
+```javascript
+const detailedProfile = await authProvider.getDetailedUserProfile();
+```
+
+**Returns**: `Promise<UserProfile | AuthError>`
+
+#### `updateUserProfile(updates)`
+Updates the user's profile information.
+
+```javascript
+const updatedProfile = await authProvider.updateUserProfile({
+  name: 'New Name',
+  nickname: 'new-nickname'
+});
+```
+
+**Parameters**:
+- `updates` (object): Profile fields to update
+
+**Returns**: `Promise<UserProfile | AuthError>`
+
+### Password Management Methods
+
+#### `resetPassword(email)`
+Sends a password reset email to the specified email address.
+
+```javascript
+const result = await authProvider.resetPassword('user@example.com');
+```
+
+**Parameters**:
+- `email` (string): User's email address
+
+**Returns**: `Promise<string | AuthError>`
+
+#### `changePassword(oldPassword, newPassword)`
+Changes the password for an authenticated user.
+
+```javascript
+const result = await authProvider.changePassword('currentPass', 'newPass123');
+```
+
+**Parameters**:
+- `oldPassword` (string): Current password
+- `newPassword` (string): New password (minimum 8 characters)
+
+**Returns**: `Promise<string | AuthError>`
+
+### Error Handling Methods
+
+#### `hasError()`
+Checks if there's a captured error.
+
+```javascript
+if (authProvider.hasError()) {
+  // Handle error
+}
+```
+
+**Returns**: `boolean`
+
+#### `getLastError()`
+Retrieves the last captured error.
+
+```javascript
+const error = authProvider.getLastError();
+```
+
+**Returns**: `AuthError | null`
+
+#### `clearLastError()`
+Clears the stored error.
+
+```javascript
+authProvider.clearLastError();
+```
+
+#### `getErrorDetails(error)`
+Gets detailed error information for debugging.
+
+```javascript
+const error = authProvider.getLastError();
+const details = authProvider.getErrorDetails(error);
+```
+
+**Returns**: `AuthErrorDetails`
+
+#### `addErrorHandler(type, handler)`
+Adds a custom error handler for specific error types.
+
+```javascript
+authProvider.addErrorHandler('network', (error) => {
+  return new NetworkError('Custom network error message');
+});
+```
+
+**Parameters**:
+- `type` (string): Error type ('network', 'validation', 'token', etc.)
+- `handler` (function): Custom error handler function
+
+---
+
+## Error Handling
+
+### Error Types
+
+The SDK provides several error types for different scenarios:
+
+#### `AuthError`
+Base authentication error class.
+
+```javascript
+{
+  name: 'AuthError',
+  message: 'Authentication failed',
+  code: 'AUTH_FAILED',
+  timestamp: '2024-01-01T12:00:00.000Z'
+}
+```
+
+#### `NetworkError`
+Network connectivity issues.
+
+```javascript
+{
+  name: 'NetworkError',
+  message: 'Network connection failed',
+  code: 'NETWORK_ERROR',
+  originalError: Error
+}
+```
+
+#### `ValidationError`
+Input validation failures.
+
+```javascript
+{
+  name: 'ValidationError',
+  message: 'Invalid email format',
+  code: 'VALIDATION_ERROR',
+  field: 'email'
+}
+```
+
+#### `TokenError`
+Token-related issues.
+
+```javascript
+{
+  name: 'TokenError',
+  message: 'Token has expired',
+  code: 'TOKEN_ERROR'
+}
+```
+
+#### `ConfigurationError`
+Setup and configuration problems.
+
+```javascript
+{
+  name: 'ConfigurationError',
+  message: 'Missing required configuration',
+  code: 'CONFIGURATION_ERROR'
+}
+```
+
+### Error Handling Patterns
+
+#### Pattern 1: Check After Each Operation
+
+```javascript
+const profile = await authProvider.getUserProfile();
+if (authProvider.hasError()) {
+  const error = authProvider.getLastError();
+  handleError(error);
+} else {
+  displayProfile(profile);
+}
+```
+
+#### Pattern 2: Global Error Listener
+
+```javascript
+window.addEventListener('auth-error', (event) => {
+  const { error, context } = event.detail;
+  console.error(`Error in ${context}:`, error.message);
+  showErrorNotification(error.message);
+});
+```
+
+#### Pattern 3: Custom Error Handlers
+
+```javascript
+// Add custom network error handler
+authProvider.addErrorHandler('network', (error) => {
+  // Log to analytics
+  analytics.track('network_error', { error: error.message });
+  
+  // Return user-friendly error
+  return new NetworkError(
+    'Unable to connect. Please check your internet connection.'
+  );
+});
+```
+
+### Error Recovery
+
+#### Automatic Recovery
+
+```javascript
+// The SDK automatically handles token refresh
+const token = await authProvider.getAccessToken(); // Auto-refreshes if expired
+```
+
+#### Manual Recovery
+
+```javascript
+if (authProvider.hasError()) {
+  const error = authProvider.getLastError();
+  
+  if (authProvider.isRecoverableError(error)) {
+    // Clear error and retry
+    authProvider.clearLastError();
+    await retryOperation();
+  } else {
+    // Handle non-recoverable error
+    redirectToLogin();
+  }
+}
+```
+
+---
+
+## Angular Integration
+
+### Service Implementation
+
+```typescript
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable } from 'rxjs';
+import GMFCIAMAuth, { AuthProvider, UserProfile, AuthError } from 'gmf-ciam-sdk';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private authProvider: AuthProvider | null = null;
+  private isAuthenticated = new BehaviorSubject<boolean>(false);
+  private currentUser = new BehaviorSubject<UserProfile | null>(null);
+  private currentError = new BehaviorSubject<AuthError | null>(null);
+
+  public isAuthenticated$ = this.isAuthenticated.asObservable();
+  public currentUser$ = this.currentUser.asObservable();
+  public currentError$ = this.currentError.asObservable();
+
+  constructor() {
+    this.initializeAuth();
+  }
+
+  private async initializeAuth(): Promise<void> {
+    try {
+      this.authProvider = await GMFCIAMAuth.createAuthProvider('auth0', {
+        domain: environment.auth0.domain,
+        clientId: environment.auth0.clientId,
+        audience: environment.auth0.audience
+      });
+
+      const isAuth = await this.authProvider.isAuthenticated();
+      this.handleAuthResult(isAuth);
+
+      if (isAuth && !this.authProvider.hasError()) {
+        await this.loadUserProfile();
+      }
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async login(): Promise<boolean> {
+    if (!this.authProvider) return false;
+
+    await this.authProvider.login();
+    return this.handleAuthResult();
+  }
+
+  logout(): void {
+    if (!this.authProvider) return;
+
+    this.authProvider.logout();
+    this.handleAuthResult(false);
+  }
+
+  async updateProfile(updates: Partial<UserProfile>): Promise<UserProfile | null> {
+    if (!this.authProvider) return null;
+
+    const result = await this.authProvider.updateUserProfile(updates);
+    
+    if (this.authProvider.hasError()) {
+      this.handleError(this.authProvider.getLastError());
+      return null;
+    }
+
+    this.currentUser.next(result);
+    return result;
+  }
+
+  private async loadUserProfile(): Promise<void> {
+    if (!this.authProvider) return;
+
+    const profile = await this.authProvider.getUserProfile();
+    
+    if (this.authProvider.hasError()) {
+      this.handleError(this.authProvider.getLastError());
+    } else {
+      this.currentUser.next(profile);
+    }
+  }
+
+  private handleAuthResult(isAuth?: boolean): boolean {
+    if (isAuth === undefined) {
+      isAuth = !this.authProvider?.hasError();
+    }
+
+    this.isAuthenticated.next(isAuth);
+    
+    if (this.authProvider?.hasError()) {
+      this.handleError(this.authProvider.getLastError());
+    }
+
+    return isAuth;
+  }
+
+  private handleError(error: AuthError | null): void {
+    this.currentError.next(error);
+    console.error('Auth Error:', error);
+  }
+
+  clearError(): void {
+    this.authProvider?.clearLastError();
+    this.currentError.next(null);
+  }
+
+  hasError(): boolean {
+    return this.authProvider?.hasError() || false;
+  }
+}
+```
+
+### Route Guard
+
+```typescript
+import { Injectable } from '@angular/core';
+import { CanActivate, Router } from '@angular/router';
+import { Observable } from 'rxjs';
+import { map, take } from 'rxjs/operators';
+import { AuthService } from './auth.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) {}
+
+  canActivate(): Observable<boolean> {
+    return this.authService.isAuthenticated$.pipe(
+      take(1),
+      map(isAuthenticated => {
+        if (!isAuthenticated) {
+          this.router.navigate(['/login']);
+          return false;
+        }
+        return true;
+      })
+    );
+  }
+}
+```
+
+### HTTP Interceptor
+
+```typescript
+import { Injectable } from '@angular/core';
+import { HttpInterceptor, HttpRequest, HttpHandler } from '@angular/common/http';
+import { switchMap, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { AuthService } from './auth.service';
+
+@Injectable()
+export class AuthInterceptor implements HttpInterceptor {
+  constructor(private authService: AuthService) {}
+
+  intercept(req: HttpRequest<any>, next: HttpHandler) {
+    // Skip auth for auth-related URLs
+    if (req.url.includes('auth0.com')) {
+      return next.handle(req);
+    }
+
+    // Get token and add to request
+    return this.authService.getAccessToken().pipe(
+      switchMap(token => {
+        if (token && !this.authService.hasError()) {
+          const authReq = req.clone({
+            headers: req.headers.set('Authorization', `Bearer ${token}`)
+          });
+          return next.handle(authReq);
+        }
+        return next.handle(req);
+      }),
+      catchError(error => {
+        console.error('Auth interceptor error:', error);
+        return of(error);
+      })
+    );
+  }
+}
+```
+
+---
+
+## Authentication Flow
+
+### 1. Initialization Flow
+
+```mermaid
+graph TD
+    A[App Starts] --> B[Initialize Auth Provider]
+    B --> C[Check Session Storage]
+    C --> D{Valid Token?}
+    D -->|Yes| E[Restore Auth State]
+    D -->|No| F[Check URL for Callback]
+    F --> G{Has Auth Code?}
+    G -->|Yes| H[Handle Callback]
+    G -->|No| I[Unauthenticated State]
+    H --> J[Exchange Code for Token]
+    J --> K[Get User Profile]
+    K --> L[Save to Session]
+    E --> M[Authenticated State]
+    L --> M
+    I --> N[Show Login]
+```
+
+### 2. Login Flow
+
+```mermaid
+graph TD
+    A[User Clicks Login] --> B[Redirect to Auth0]
+    B --> C[User Enters Credentials]
+    C --> D[Auth0 Validates]
+    D --> E[Redirect with Code]
+    E --> F[Exchange Code for Tokens]
+    F --> G[Get User Profile]
+    G --> H[Save to Session Storage]
+    H --> I[Update App State]
+    I --> J[User Authenticated]
+```
+
+### 3. Token Refresh Flow
+
+```mermaid
+graph TD
+    A[API Call] --> B{Token Expired?}
+    B -->|No| C[Use Current Token]
+    B -->|Yes| D[Use Refresh Token]
+    D --> E{Refresh Valid?}
+    E -->|Yes| F[Get New Access Token]
+    E -->|No| G[Redirect to Login]
+    F --> H[Update Session Storage]
+    H --> I[Retry API Call]
+    C --> J[Make API Call]
+    I --> J
+```
+
+---
+
+## Security Considerations
+
+### Token Storage
+
+- **Session Storage**: Tokens are stored in session storage by default
+- **Automatic Cleanup**: Tokens are cleared when browser session ends
+- **Secure Transmission**: All token exchanges use HTTPS
+
+### Best Practices
+
+#### 1. Environment Configuration
+
+```javascript
+// Never expose secrets in client-side code
+const config = {
+  domain: process.env.REACT_APP_AUTH0_DOMAIN,
+  clientId: process.env.REACT_APP_AUTH0_CLIENT_ID,
+  audience: process.env.REACT_APP_AUTH0_AUDIENCE
+  // clientSecret should NEVER be in frontend code
+};
+```
+
+#### 2. Token Validation
+
+```javascript
+// Always validate tokens before use
+const token = await authProvider.getAccessToken();
+if (authProvider.hasError()) {
+  // Handle token error - possibly redirect to login
+  redirectToLogin();
+}
+```
+
+#### 3. Secure Headers
+
+```javascript
+// Add security headers to API requests
+const response = await fetch('/api/data', {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
+  }
+});
+```
+
+#### 4. HTTPS Only
+
+```javascript
+// Ensure all Auth0 URLs use HTTPS
+const config = {
+  domain: 'your-domain.auth0.com', // Always HTTPS
+  redirectUri: 'https://yourapp.com' // Never HTTP in production
+};
+```
+
+### Auth0 Security Settings
+
+#### Application Configuration
+
+```json
+{
+  "application_type": "spa",
+  "token_endpoint_auth_method": "none",
+  "allowed_callback_urls": ["https://yourapp.com"],
+  "allowed_logout_urls": ["https://yourapp.com"],
+  "allowed_web_origins": ["https://yourapp.com"],
+  "allowed_origins": ["https://yourapp.com"]
+}
+```
+
+#### API Configuration
+
+```json
+{
+  "identifier": "https://yourapi.com",
+  "signing_algorithm": "RS256",
+  "allow_offline_access": true,
+  "token_lifetime": 86400,
+  "token_lifetime_for_web": 7200
+}
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Login Redirect Loop
+
+**Problem**: App keeps redirecting to login page
+
+**Solution**:
+```javascript
+// Check for authentication before redirecting
+const isAuth = await authProvider.isAuthenticated();
+if (!isAuth && !authProvider.hasError()) {
+  // Only redirect if not already in auth flow
+  if (!window.location.pathname.includes('/callback')) {
+    redirectToLogin();
+  }
+}
+```
+
+#### 2. Token Refresh Failures
+
+**Problem**: Refresh token not working
+
+**Possible Causes**:
+- Refresh token expired
+- Invalid refresh token
+- Network connectivity issues
+
+**Solution**:
+```javascript
+const refreshResult = await authProvider.refreshToken();
+if (authProvider.hasError()) {
+  const error = authProvider.getLastError();
+  if (error.code === 'TOKEN_ERROR') {
+    // Refresh token invalid, require new login
+    authProvider.logout();
+  }
+}
+```
+
+#### 3. CORS Issues
+
+**Problem**: Network errors during authentication
+
+**Solution**:
+- Verify allowed origins in Auth0 dashboard
+- Ensure correct domain configuration
+- Check browser console for specific CORS errors
+
+```javascript
+// Add error handling for CORS issues
+authProvider.addErrorHandler('network', (error) => {
+  if (error.message.includes('CORS')) {
+    return new NetworkError(
+      'Cross-origin request blocked. Please check Auth0 configuration.'
+    );
+  }
+  return new NetworkError('Network error occurred.');
+});
+```
+
+#### 4. Session Storage Issues
+
+**Problem**: Authentication state not persisting
+
+**Checks**:
+- Browser supports session storage
+- Not in private/incognito mode
+- Session storage not disabled
+
+```javascript
+// Check session storage availability
+if (typeof Storage === 'undefined') {
+  console.warn('Session storage not supported');
+  // Fallback to memory storage
+}
+```
+
+### Debug Mode
+
+Enable debug logging:
+
+```javascript
+// Add console logging for debugging
+authProvider.addErrorHandler('default', (error) => {
+  console.group('Auth Debug');
+  console.error('Error:', error);
+  console.log('Context:', error.context);
+  console.log('Timestamp:', error.timestamp);
+  console.log('Stack:', error.stack);
+  console.groupEnd();
+  return error;
+});
+```
+
+### Error Monitoring
+
+```javascript
+// Send errors to monitoring service
+window.addEventListener('auth-error', (event) => {
+  const { error, context } = event.detail;
+  
+  // Send to error monitoring (e.g., Sentry)
+  errorMonitor.captureException(error, {
+    tags: { context, component: 'auth' },
+    extra: { errorDetails: error.errorInfo }
+  });
+});
+```
+
+---
+
+## Migration Guide
+
+### From Version 0.x to 1.0
+
+#### Breaking Changes
+
+1. **Error Handling**: Errors are now captured instead of thrown
+2. **Storage**: Default changed from localStorage to sessionStorage
+3. **Return Types**: Methods now return `Promise<T | AuthError>`
+
+#### Migration Steps
+
+#### 1. Update Error Handling
+
+**Before (v0.x)**:
+```javascript
+try {
+  await authProvider.login();
+} catch (error) {
+  handleError(error);
+}
+```
+
+**After (v1.0)**:
+```javascript
+await authProvider.login();
+if (authProvider.hasError()) {
+  const error = authProvider.getLastError();
+  handleError(error);
+}
+```
+
+#### 2. Update Storage References
+
+**Before (v0.x)**:
+```javascript
+const config = {
+  cacheLocation: 'localstorage'
+};
+```
+
+**After (v1.0)**:
+```javascript
+const config = {
+  cacheLocation: 'sessionstorage' // New default
+};
+```
+
+#### 3. Update Type Definitions
+
+**Before (v0.x)**:
+```typescript
+getUserProfile(): Promise<UserProfile>
+```
+
+**After (v1.0)**:
+```typescript
+getUserProfile(): Promise<UserProfile | AuthError>
+```
+
+---
+
+## Examples
+
+### Complete React Integration
+
+```jsx
+import React, { useState, useEffect } from 'react';
+import GMFCIAMAuth from 'gmf-ciam-sdk';
+
+function App() {
+  const [authProvider, setAuthProvider] = useState(null);
+  const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    initAuth();
+  }, []);
+
+  const initAuth = async () => {
+    try {
+      const provider = await GMFCIAMAuth.createAuthProvider('auth0', {
+        domain: process.env.REACT_APP_AUTH0_DOMAIN,
+        clientId: process.env.REACT_APP_AUTH0_CLIENT_ID,
+        audience: process.env.REACT_APP_AUTH0_AUDIENCE
+      });
+
+      setAuthProvider(provider);
+
+      const isAuth = await provider.isAuthenticated();
+      if (isAuth && !provider.hasError()) {
+        const profile = await provider.getUserProfile();
+        if (!provider.hasError()) {
+          setUser(profile);
+        }
+      }
+
+      if (provider.hasError()) {
+        setError(provider.getLastError());
+      }
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = async () => {
+    if (!authProvider) return;
+    
+    setError(null);
+    await authProvider.login();
+    
+    if (authProvider.hasError()) {
+      setError(authProvider.getLastError());
+    }
+  };
+
+  const logout = () => {
+    if (!authProvider) return;
+    
+    authProvider.logout();
+    setUser(null);
+    setError(null);
+  };
+
+  const updateProfile = async (updates) => {
+    if (!authProvider) return;
+    
+    const result = await authProvider.updateUserProfile(updates);
+    
+    if (authProvider.hasError()) {
+      setError(authProvider.getLastError());
+    } else {
+      setUser(result);
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div className="app">
+      {error && (
+        <div className="error">
+          Error: {error.message}
+          <button onClick={() => setError(null)}>Clear</button>
+        </div>
+      )}
+
+      {user ? (
+        <div className="profile">
+          <h2>Welcome, {user.name}!</h2>
+          <img src={user.picture} alt="Profile" />
+          <p>Email: {user.email}</p>
+          <button onClick={logout}>Logout</button>
+          <button onClick={() => updateProfile({ name: 'New Name' })}>
+            Update Name
+          </button>
+        </div>
+      ) : (
+        <div className="login">
+          <h2>Please Login</h2>
+          <button onClick={login}>Login with Auth0</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
+```
+
+### Vue.js Integration
+
+```vue
+<template>
+  <div id="app">
+    <div v-if="error" class="error">
+      {{ error.message }}
+      <button @click="clearError">Clear</button>
+    </div>
+
+    <div v-if="user" class="profile">
+      <h2>Welcome, {{ user.name }}!</h2>
+      <img :src="user.picture" alt="Profile" />
+      <p>Email: {{ user.email }}</p>
+      <button @click="logout">Logout</button>
+    </div>
+
+    <div v-else class="login">
+      <h2>Please Login</h2>
+      <button @click="login">Login with Auth0</button>
+    </div>
+  </div>
+</template>
+
+<script>
+import GMFCIAMAuth from 'gmf-ciam-sdk';
+
+export default {
+  data() {
+    return {
+      authProvider: null,
+      user: null,
+      error: null
+    };
+  },
+
+  async mounted() {
+    await this.initAuth();
+  },
+
+  methods: {
+    async initAuth() {
+      try {
+        this.authProvider = await GMFCIAMAuth.createAuthProvider('auth0', {
+          domain: process.env.VUE_APP_AUTH0_DOMAIN,
+          clientId: process.env.VUE_APP_AUTH0_CLIENT_ID,
+          audience: process.env.VUE_APP_AUTH0_AUDIENCE
+        });
+
+        const isAuth = await this.authProvider.isAuthenticated();
+        if (isAuth && !this.authProvider.hasError()) {
+          const profile = await this.authProvider.getUserProfile();
+          if (!this.authProvider.hasError()) {
+            this.user = profile;
+          }
+        }
+
+        this.checkForErrors();
+      } catch (err) {
+        this.error = err;
+      }
+    },
+
+    async login() {
+      this.clearError();
+      await this.authProvider.login();
+      this.checkForErrors();
+    },
+
+    logout() {
+      this.authProvider.logout();
+      this.user = null;
+      this.clearError();
+    },
+
+    checkForErrors() {
+      if (this.authProvider.hasError()) {
+        this.error = this.authProvider.getLastError();
+      }
+    },
+
+    clearError() {
+      this.authProvider?.clearLastError();
+      this.error = null;
+    }
+  }
+};
+</script>
+```
+
+---
+
+## Support
+
+### Documentation
+- [Auth0 Documentation](https://auth0.com/docs)
+- [SDK API Reference](#api-reference)
+
+### Community
+- [GitHub Issues](https://github.com/yourusername/gmf-ciam-sdk/issues)
+- [Stack Overflow](https://stackoverflow.com/questions/tagged/gmf-ciam-sdk)
+
+### Enterprise Support
+For enterprise support and custom integrations, contact the development team.
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## Changelog
+
+### v1.0.0
+- Initial release with Auth0 support
+- Comprehensive error handling system
+- Session storage implementation
+- TypeScript support
+- Angular integration examples
+- Password management features
+- Profile management capabilities
