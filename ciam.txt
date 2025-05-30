@@ -1,0 +1,575 @@
+# GMF CIAM SDK Documentation
+
+A universal authentication SDK that provides a provider-agnostic interface for Auth0 integration.
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [API Reference](#api-reference)
+- [Examples](#examples)
+- [Error Handling](#error-handling)
+- [Advanced Features](#advanced-features)
+- [TypeScript Support](#typescript-support)
+
+## Installation
+
+### NPM/Yarn
+```bash
+npm install gmf-ciam-sdk
+# or
+yarn add gmf-ciam-sdk
+```
+
+### CDN
+```html
+<script src="path/to/GMF-CIAM-sdk.umd.js"></script>
+```
+
+## Quick Start
+
+### ES6 Modules
+```javascript
+import GMFCIAMAuth from 'gmf-ciam-sdk';
+
+// Initialize Auth0 provider
+const authClient = await GMFCIAMAuth.createAuthProvider('auth0', {
+  domain: 'your-domain.auth0.com',
+  clientId: 'your-client-id',
+  audience: 'your-api-audience'
+});
+
+// Login
+await authClient.login();
+
+// Check authentication
+const isAuthenticated = await authClient.isAuthenticated();
+
+// Get user profile
+if (isAuthenticated) {
+  const profile = await authClient.getUserProfile();
+  console.log(profile);
+}
+```
+
+### UMD (Browser)
+```html
+<script src="GMF-CIAM-sdk.umd.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    const authClient = await GMFCIAMAuth.createAuthProvider('auth0', {
+      domain: 'your-domain.auth0.com',
+      clientId: 'your-client-id',
+      audience: 'your-api-audience'
+    });
+    
+    // Use authClient...
+  });
+</script>
+```
+
+## Configuration
+
+### Auth0 Configuration
+
+```javascript
+const auth0Config = {
+  domain: 'your-domain.auth0.com',          // Required: Your Auth0 domain
+  clientId: 'your-client-id',               // Required: Your Auth0 client ID
+  audience: 'your-api-audience',            // Required: Your API audience
+  redirectUri: window.location.origin,     // Optional: Redirect URI (defaults to current origin)
+  scope: 'openid profile email offline_access', // Optional: OAuth scopes
+  responseType: 'code',                     // Optional: OAuth response type
+  cacheLocation: 'localstorage',           // Optional: Token storage location
+  managementApiAudience: 'https://your-domain.auth0.com/api/v2/' // Optional: Management API audience
+};
+```
+
+### Configuration Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `domain` | string | ✅ | - | Your Auth0 domain |
+| `clientId` | string | ✅ | - | Your Auth0 application client ID |
+| `audience` | string | ✅ | - | Your API audience identifier |
+| `redirectUri` | string | ❌ | `window.location.origin` | URL to redirect after authentication |
+| `scope` | string | ❌ | `'openid profile email offline_access'` | OAuth scopes |
+| `responseType` | string | ❌ | `'code'` | OAuth response type |
+| `cacheLocation` | string | ❌ | `'localstorage'` | Where to store tokens |
+| `managementApiAudience` | string | ❌ | `https://{domain}/api/v2/` | Management API audience |
+
+## API Reference
+
+### Factory Method
+
+#### `GMFCIAMAuth.createAuthProvider(type, config)`
+
+Creates an authentication provider instance.
+
+**Parameters:**
+- `type` (string): Provider type - currently supports `'auth0'`
+- `config` (object): Provider-specific configuration
+
+**Returns:** `Promise<AuthProvider>`
+
+### AuthProvider Methods
+
+#### `login()`
+Initiates the authentication flow by redirecting to the Auth0 login page.
+
+```javascript
+await authClient.login();
+```
+
+**Returns:** `Promise<void>`
+
+---
+
+#### `logout()`
+Logs out the user and clears stored authentication data.
+
+```javascript
+authClient.logout();
+```
+
+**Returns:** `void`
+
+---
+
+#### `isAuthenticated()`
+Checks if the user is currently authenticated.
+
+```javascript
+const isAuth = await authClient.isAuthenticated();
+```
+
+**Returns:** `Promise<boolean>`
+
+---
+
+#### `getAccessToken()`
+Retrieves the current access token, refreshing if necessary.
+
+```javascript
+try {
+  const token = await authClient.getAccessToken();
+  console.log('Access token:', token);
+} catch (error) {
+  console.error('Not authenticated');
+}
+```
+
+**Returns:** `Promise<string>`
+**Throws:** Error if not authenticated
+
+---
+
+#### `getUserProfile(forceRefresh?)`
+Retrieves the user's profile information.
+
+```javascript
+const profile = await authClient.getUserProfile();
+console.log(profile.name, profile.email);
+
+// Force refresh from server
+const freshProfile = await authClient.getUserProfile(true);
+```
+
+**Parameters:**
+- `forceRefresh` (boolean, optional): Force refresh from server
+
+**Returns:** `Promise<UserProfile>`
+
+---
+
+#### `refreshToken()`
+Manually refreshes the access token using the refresh token.
+
+```javascript
+try {
+  await authClient.refreshToken();
+  console.log('Token refreshed successfully');
+} catch (error) {
+  console.error('Token refresh failed');
+}
+```
+
+**Returns:** `Promise<boolean>`
+
+---
+
+#### `resetPassword(email)`
+Initiates a password reset for the specified email address.
+
+```javascript
+try {
+  const result = await authClient.resetPassword('user@example.com');
+  console.log(result); // "Password reset email sent successfully"
+} catch (error) {
+  console.error('Password reset failed:', error.message);
+}
+```
+
+**Parameters:**
+- `email` (string): User's email address
+
+**Returns:** `Promise<string>`
+
+---
+
+#### `changePassword(oldPassword, newPassword)`
+Changes the password for the currently authenticated user.
+
+```javascript
+try {
+  const result = await authClient.changePassword('oldPass123', 'newPass456');
+  console.log(result); // "Password changed successfully"
+} catch (error) {
+  console.error('Password change failed:', error.message);
+}
+```
+
+**Parameters:**
+- `oldPassword` (string): Current password
+- `newPassword` (string): New password (minimum 8 characters)
+
+**Returns:** `Promise<string>`
+**Requirements:** User must be authenticated
+
+---
+
+#### `getDetailedUserProfile()`
+Retrieves detailed user profile using the Auth0 Management API.
+
+```javascript
+try {
+  const detailedProfile = await authClient.getDetailedUserProfile();
+  console.log(detailedProfile);
+} catch (error) {
+  console.error('Failed to get detailed profile');
+}
+```
+
+**Returns:** `Promise<UserProfile>`
+**Requirements:** User must be authenticated, Management API access required
+
+---
+
+#### `updateUserProfile(updates)`
+Updates the user's profile information.
+
+```javascript
+try {
+  const updatedProfile = await authClient.updateUserProfile({
+    name: 'New Name',
+    user_metadata: {
+      preferences: {
+        theme: 'dark'
+      }
+    }
+  });
+  console.log('Profile updated:', updatedProfile);
+} catch (error) {
+  console.error('Profile update failed');
+}
+```
+
+**Parameters:**
+- `updates` (object): Profile fields to update
+
+**Returns:** `Promise<UserProfile>`
+**Requirements:** User must be authenticated, Management API access required
+
+## Examples
+
+### Complete HTML Example
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GMF CIAM Auth Example</title>
+    <script src="GMF-CIAM-sdk.umd.js"></script>
+</head>
+<body>
+    <div id="login-section">
+        <button id="login-btn">Login</button>
+    </div>
+    
+    <div id="authenticated-section" style="display: none;">
+        <button id="logout-btn">Logout</button>
+        <button id="change-password-btn">Change Password</button>
+        <div id="profile-info"></div>
+    </div>
+
+    <script>
+        let authClient;
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize
+            authClient = await GMFCIAMAuth.createAuthProvider('auth0', {
+                domain: 'your-domain.auth0.com',
+                clientId: 'your-client-id',
+                audience: 'your-api-audience'
+            });
+            
+            // Event listeners
+            document.getElementById('login-btn').onclick = () => authClient.login();
+            document.getElementById('logout-btn').onclick = () => authClient.logout();
+            document.getElementById('change-password-btn').onclick = changePassword;
+            
+            // Update UI
+            await updateUI();
+        });
+        
+        async function updateUI() {
+            const isAuth = await authClient.isAuthenticated();
+            
+            document.getElementById('login-section').style.display = 
+                isAuth ? 'none' : 'block';
+            document.getElementById('authenticated-section').style.display = 
+                isAuth ? 'block' : 'none';
+                
+            if (isAuth) {
+                const profile = await authClient.getUserProfile();
+                document.getElementById('profile-info').innerHTML = 
+                    `<h3>Welcome, ${profile.name || profile.email}</h3>`;
+            }
+        }
+        
+        async function changePassword() {
+            const oldPassword = prompt('Enter current password:');
+            const newPassword = prompt('Enter new password:');
+            
+            if (oldPassword && newPassword) {
+                try {
+                    await authClient.changePassword(oldPassword, newPassword);
+                    alert('Password changed successfully!');
+                } catch (error) {
+                    alert('Password change failed: ' + error.message);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+```
+
+### React Example
+
+```javascript
+import React, { useState, useEffect } from 'react';
+import GMFCIAMAuth from 'gmf-ciam-sdk';
+
+function App() {
+  const [authClient, setAuthClient] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  
+  useEffect(() => {
+    initializeAuth();
+  }, []);
+  
+  const initializeAuth = async () => {
+    try {
+      const client = await GMFCIAMAuth.createAuthProvider('auth0', {
+        domain: 'your-domain.auth0.com',
+        clientId: 'your-client-id',
+        audience: 'your-api-audience'
+      });
+      
+      setAuthClient(client);
+      
+      const isAuth = await client.isAuthenticated();
+      setIsAuthenticated(isAuth);
+      
+      if (isAuth) {
+        const profile = await client.getUserProfile();
+        setUserProfile(profile);
+      }
+    } catch (error) {
+      console.error('Auth initialization failed:', error);
+    }
+  };
+  
+  const handleLogin = () => {
+    if (authClient) {
+      authClient.login();
+    }
+  };
+  
+  const handleLogout = () => {
+    if (authClient) {
+      authClient.logout();
+    }
+  };
+  
+  return (
+    <div>
+      {!isAuthenticated ? (
+        <button onClick={handleLogin}>Login</button>
+      ) : (
+        <div>
+          <h2>Welcome, {userProfile?.name || userProfile?.email}</h2>
+          <button onClick={handleLogout}>Logout</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
+```
+
+## Error Handling
+
+The SDK provides comprehensive error handling with descriptive error messages:
+
+```javascript
+try {
+  await authClient.login();
+} catch (error) {
+  switch (error.message) {
+    case 'Missing required Auth0 configuration parameters':
+      console.error('Configuration error:', error);
+      break;
+    case 'Not authenticated':
+      console.error('Authentication required:', error);
+      break;
+    case 'Failed to refresh access token':
+      console.error('Token refresh failed:', error);
+      // Redirect to login
+      break;
+    default:
+      console.error('Unexpected error:', error);
+  }
+}
+```
+
+### Common Error Scenarios
+
+| Error | Description | Solution |
+|-------|-------------|----------|
+| `Missing required Auth0 configuration parameters` | Required config missing | Check domain, clientId, audience |
+| `Not authenticated` | User not logged in | Call `login()` method |
+| `No authorization code found in URL` | Auth callback failed | Check redirect URI configuration |
+| `Failed to refresh access token` | Token refresh failed | Re-authenticate user |
+| `Current password is incorrect` | Wrong password provided | Verify current password |
+
+## Advanced Features
+
+### Token Management
+
+The SDK automatically handles:
+- Token storage in localStorage
+- Automatic token refresh before expiration
+- Secure token validation
+
+### Management API Integration
+
+For advanced operations requiring Management API access:
+
+```javascript
+// Get detailed profile with metadata
+const detailedProfile = await authClient.getDetailedUserProfile();
+
+// Update user metadata
+await authClient.updateUserProfile({
+  user_metadata: {
+    preferences: { theme: 'dark' },
+    settings: { notifications: true }
+  }
+});
+```
+
+### Custom Scopes
+
+Configure custom scopes for specific API access:
+
+```javascript
+const authClient = await GMFCIAMAuth.createAuthProvider('auth0', {
+  domain: 'your-domain.auth0.com',
+  clientId: 'your-client-id',
+  audience: 'your-api-audience',
+  scope: 'openid profile email read:users write:users'
+});
+```
+
+## TypeScript Support
+
+The SDK includes full TypeScript definitions:
+
+```typescript
+import GMFCIAMAuth, { AuthProvider, UserProfile, AuthConfig } from 'gmf-ciam-sdk';
+
+const config: AuthConfig = {
+  domain: 'your-domain.auth0.com',
+  clientId: 'your-client-id',
+  audience: 'your-api-audience'
+};
+
+const authClient: AuthProvider = await GMFCIAMAuth.createAuthProvider('auth0', config);
+const profile: UserProfile = await authClient.getUserProfile();
+```
+
+### Type Definitions
+
+```typescript
+interface AuthConfig {
+  domain: string;
+  clientId: string;
+  audience?: string;
+  redirectUri?: string;
+  scope?: string;
+  responseType?: string;
+  cacheLocation?: string;
+}
+
+interface UserProfile {
+  sub: string;
+  name?: string;
+  email?: string;
+  picture?: string;
+  [key: string]: any;
+}
+
+interface AuthProvider {
+  login(): Promise<void>;
+  logout(): void;
+  getUserProfile(forceRefresh?: boolean): Promise<UserProfile>;
+  isAuthenticated(): Promise<boolean>;
+  getAccessToken(): Promise<string>;
+  refreshToken(): Promise<boolean>;
+  resetPassword(email: string): Promise<string>;
+  changePassword(oldPassword: string, newPassword: string): Promise<string>;
+  getDetailedUserProfile(): Promise<UserProfile>;
+  updateUserProfile(updates: Partial<UserProfile>): Promise<UserProfile>;
+}
+```
+
+## Browser Support
+
+- Chrome 60+
+- Firefox 55+
+- Safari 12+
+- Edge 79+
+
+## Security Considerations
+
+1. **Client Secret**: Never expose client secrets in browser code
+2. **HTTPS**: Always use HTTPS in production
+3. **Token Storage**: Tokens are stored in localStorage by default
+4. **Scope Limitation**: Use minimal required scopes
+5. **Management API**: Use server-side proxy for Management API calls in production
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Support
+
+For issues and questions:
+- GitHub Issues: [Link to your repository]
+- Documentation: [Link to full documentation]
+- Email: [Your support email]
